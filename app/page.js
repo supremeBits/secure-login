@@ -12,6 +12,17 @@ async function post(url, body) {
   return { ok: res.ok, data };
 }
 
+function Shell({ children }) {
+  return (
+    <div className="wrap">
+      <div className="brand">
+        <span className="brand-mark">🔐</span> Secure Tasks
+      </div>
+      {children}
+    </div>
+  );
+}
+
 const COPY = {
   login: { title: "Welcome back! 👋", sub: "Log in to your account.", button: "Log in" },
   register: { title: "Join us! 🎉", sub: "Create your account in under a minute.", button: "Create account" },
@@ -56,6 +67,7 @@ export default function Home() {
 
   if (mode === "qr")
     return (
+      <Shell>
       <div className="card">
         <h1>You're in! 🎊 Now lock it down.</h1>
         <p className="sub">
@@ -74,11 +86,13 @@ export default function Home() {
           I've added it, go to log in
         </button>
       </div>
+      </Shell>
     );
 
   const copy = COPY[mode];
 
   return (
+    <Shell>
     <div className="card">
       <h1>{copy.title}</h1>
       <p className="sub">{copy.sub}</p>
@@ -137,5 +151,6 @@ export default function Home() {
         </button>
       )}
     </div>
+    </Shell>
   );
 }

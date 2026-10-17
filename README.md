@@ -1,35 +1,38 @@
-# Secure Login System
+# Secure Tasks
 
-Next.js + Supabase + Vercel. Covers every part of the assignment:
+A secure to-do app: Next.js + Supabase + Vercel. Works on desktop and installs on a phone (PWA).
 
-| Part | Requirement | Where |
-|------|-------------|-------|
-| a | User identification | `app/api/auth/register`, `login` (unique username/email) |
-| b | Authentication, 2-step factor | password (`login`) then TOTP code (`verify-2fa`) |
-| c | Authorization, roles | `role` column; checks in `app/admin/page.js` and `app/api/admin/users` |
-| d | Salt and pepper | `lib/crypto.js` (HMAC-SHA256 pepper + bcrypt per-user salt) |
-| e | Auto backups | `app/api/cron/backup` + `vercel.json` cron (daily 02:00 UTC) |
-| f | Cryptographic techniques | bcrypt, HMAC-SHA256, AES-256-GCM (2FA secrets and backups), JWT (HS256), HTTPS |
-| g | Vercel connected to the cloud server | Vercel env vars + cron job writes backups into Supabase Storage |
-| h | Pepper saved in system environment | `PEPPER` env var, never in code or database |
+## Roles
+| Role | Can do |
+|------|--------|
+| admin | Everything: manage users, settings, backups, restore; sees all tasks (read-only) |
+| manager | Own tasks + read-only view of the whole team's tasks |
+| staff | Own tasks (add, edit, tick off, delete) |
+| viewer | Read-only on their own tasks |
 
-## Setup
+## Requirements map
+| Requirement | Where |
+|-------------|-------|
+| Two-factor authentication | `app/api/auth/login`, `verify-2fa` (TOTP) |
+| Login with salt and pepper | `lib/crypto.js` (pepper from `process.env.PEPPER`, HMAC-SHA256, then bcrypt salt) |
+| Backup | `lib/backup.js`, daily cron in `vercel.json`, "Back up now" in Admin > System |
+| User roles | `lib/permissions.js`, role checks in every API route and page |
+| Interface | `app/dashboard` (tasks), `app/team`, `app/admin` |
+| Current state of system | Admin > System > System state |
+| Restore (configuration only) | Admin > System > Restore points / Backups. Changes the `settings` table only |
+| Admin: add, modify, delete users | Admin > Users |
+| Deleted user stays in the system | Soft delete: `users.deleted_at`. Row and tasks are kept |
+| Rows in data table / records | `users`, `tasks`, `settings`, `restore_points` + `scripts/seed.js` |
+| Pepper from the system environment | `PEPPER` env var (Vercel + `.env.local`) |
+| Desktop web + mobile app | Responsive layout + `app/manifest.js` + `public/sw.js` (installable) |
+| 4+ users with different roles | admin, manager, staff, viewer (`scripts/seed.js`) |
 
-1. **Supabase**: create a free project at supabase.com. In the SQL Editor, run `supabase/schema.sql`.
-   Copy the Project URL and the `service_role` key (Project Settings > API).
-2. **Local**: `npm install`, copy `.env.example` to `.env.local`, fill in the values.
-   Generate each secret with `openssl rand -base64 32` (PEPPER, SESSION_SECRET, ENCRYPTION_KEY, BACKUP_KEY, CRON_SECRET).
-   Set `ADMIN_EMAIL` to the email you will register with.
-3. `npm run dev`, open http://localhost:3000, register, scan the QR with Google Authenticator, log in.
-4. **Deploy**: push to GitHub, import the repo in Vercel, add the same env vars
-   (Settings > Environment Variables), deploy. The cron job in `vercel.json` then runs daily.
-5. **Test a backup now**:
-   `curl -H "Authorization: Bearer YOUR_CRON_SECRET" https://YOUR-APP.vercel.app/api/cron/backup`
-   Then check Supabase > Storage > backups for the encrypted `.enc` file.
-6. **Restore/read a backup**: download the file, then
-   `BACKUP_KEY="..." node scripts/decrypt-backup.js backup-XXXX.enc`
+## Upgrade steps (from the first version)
+1. Supabase > SQL Editor: run `supabase/migration-part2.sql` once.
+2. Copy the new files over the project, then `npm run dev`.
+3. `node scripts/seed.js` to create the demo users and sample tasks.
+4. Push to GitHub; Vercel redeploys by itself.
 
-## Security notes
-- Keep `PEPPER` safe. If you lose or change it, existing passwords stop working.
-- The service-role key and all secrets live only on the server (env vars), never in browser code.
-- 5 wrong attempts locks the account for 15 minutes.
+## Install on a phone
+Open the live Vercel link in Chrome (Android) or Safari (iPhone), then use
+"Add to Home screen" / "Install app".
